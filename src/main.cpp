@@ -3,6 +3,8 @@
 #include "json.hpp"
 #include "PID.h"
 #include <math.h>
+#include <ctime>
+#include <chrono>
 
 // for convenience
 using json = nlohmann::json;
@@ -34,6 +36,7 @@ int main()
 
   PID pid;
   // TODO: Initialize the pid variable.
+  pid.Init(.01,0.001,0.001);
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -44,12 +47,15 @@ int main()
       auto s = hasData(std::string(data).substr(0, length));
       if (s != "") {
         auto j = json::parse(s);
+        //std::cout << j << std::endl;
+
         std::string event = j[0].get<std::string>();
         if (event == "telemetry") {
           // j[1] is the data JSON object
           double cte = std::stod(j[1]["cte"].get<std::string>());
           double speed = std::stod(j[1]["speed"].get<std::string>());
           double angle = std::stod(j[1]["steering_angle"].get<std::string>());
+          double throttle = std::stod(j[1]["throttle"].get<std::string>());
           double steer_value;
           /*
           * TODO: Calcuate steering value here, remember the steering value is
@@ -57,13 +63,27 @@ int main()
           * NOTE: Feel free to play around with the throttle and speed. Maybe use
           * another PID controller to control the speed!
           */
-          
+
+
+          /* get system time in milliseconds, thank you stack overflow: */
+          auto duration = std::chrono::system_clock::now().time_since_epoch();
+          auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+
+          std::cout << millis << std::endl;
+
+          Telemetry reading = { millis, angle, speed, throttle, cte  };
+
+          Telemetry new_controls = pid.updateTelemetry(reading);
+
+          //std::cout << "angle: " << new_controls.steering_angle_;
+
+          steer_value = new_controls.steering_angle_;
           // DEBUG
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.3;
+          msgJson["throttle"] = 0.2;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);

@@ -1,46 +1,37 @@
 #ifndef PID_H
 #define PID_H
 
+#include <iostream>
+#include <vector>
+/**
+  * structure to hold telemtry data
+**/
+struct Telemetry {
+	long long timestamp_;
+	double steering_angle_;
+  double velocity_;
+  double throttle_;
+  double cte;
+};
+
+
 class PID {
 public:
-  /*
-  * Errors
-  */
-  double p_error;
-  double i_error;
-  double d_error;
 
-  /*
-  * Coefficients
-  */ 
-  double Kp;
-  double Ki;
-  double Kd;
+  double Kp_;
+  double Ki_;
+  double Kd_;
 
-  /*
-  * Constructor
-  */
+  std::vector<Telemetry> telemetry_; //list of all telemetry readings
+
+  double integrated_cte; //running sum integrated cte
+
   PID();
-
-  /*
-  * Destructor.
-  */
   virtual ~PID();
 
-  /*
-  * Initialize PID.
-  */
   void Init(double Kp, double Ki, double Kd);
 
-  /*
-  * Update the PID error variables given cross track error.
-  */
-  void UpdateError(double cte);
-
-  /*
-  * Calculate the total PID error.
-  */
-  double TotalError();
+  Telemetry updateTelemetry(Telemetry reading);
 };
 
 #endif /* PID_H */
