@@ -3,8 +3,6 @@
 #include "json.hpp"
 #include "PID.h"
 #include <math.h>
-#include <ctime>
-#include <chrono>
 
 // for convenience
 using json = nlohmann::json;
@@ -37,28 +35,28 @@ int main(int argc, char *argv[])
   PID pid;
   // TODO: Initialize the pid variable.
   //pid.Init(.1,0.1,0.001);
-  pid.is_initialized=false;
 
-  double c[3] ={.02,0.001,0};
+
+  double c[3] ={.2,.1,.1};
 
   if(argc ==4){
     std::cout << argv[1] << std::endl;
     c[0] = atof(argv[1]);
     c[1] = atof(argv[2]);
     c[2] = atof(argv[3]);
-
   }
 
-  h.onMessage([&pid,&c](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  pid.Init(c[0],c[1],c[2]);
+
+  h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
-    //pid.Restart(ws);
+
+
     if(!pid.is_initialized){
       pid.Restart(ws);
-      pid.Init(c[0],c[1],c[2]);
     }
-
 
     if (length && length > 2 && data[0] == '4' && data[1] == '2')
     {
@@ -75,6 +73,7 @@ int main(int argc, char *argv[])
           double angle = std::stod(j[1]["steering_angle"].get<std::string>());
           double throttle = std::stod(j[1]["throttle"].get<std::string>());
           double steer_value;
+          double new_throttle;
           /*
           * TODO: Calcuate steering value here, remember the steering value is
           * [-1, 1].
@@ -82,33 +81,35 @@ int main(int argc, char *argv[])
           * another PID controller to control the speed!
           */
 
+          pid.UpdateError(cte);
 
-          /* get system time in milliseconds, thank you stack overflow: */
-          auto duration = std::chrono::system_clock::now().time_since_epoch();
-          auto millis = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
-
-          //std::cout << millis << std::endl;
-
-          Telemetry reading = { millis, angle, speed, throttle, cte  };
-
-          Telemetry new_controls = pid.updateTelemetry(reading);
-
-
+          /*
           if( (abs(cte) > 3.0 && pid.telemetry_.size()> 50) || pid.telemetry_.size() > 3000 ){
             double avg_c = pid.avg_cte();
             std::cout << "AVGCTE: " << avg_c << " DURATION: " << pid.telemetry_.size() << std::endl;
             std::exit(0);
-          }
+          }*/
 
           //std::cout << "angle: " << new_controls.steering_angle_;
-
-          steer_value = new_controls.steering_angle_;
+          double q = .5;
+          steer_value = q*pid.TotalError()+(1-q)*angle/25.0;
+          new_throttle = .5*(1.-1.0*std::abs(steer_value));
           // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << " c0: " << c[0] << std::endl;
+
+          std::cout << "cte: " << cte
+                    << " speed: " << speed
+                    << " angle: " << angle
+                    << " throttle: " << throttle
+                    << " new_angle: " << steer_value
+                    << " new_throttle: " << new_throttle
+                    << " pe: " << pid.p_error
+                    << " de: " << pid.d_error
+                    << " ie: " << pid.i_error
+                    << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 1.0*(1.-.9*std::abs(steer_value)); //brake on turn
+          msgJson["throttle"] =  new_throttle;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           //std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);

@@ -4,41 +4,44 @@
 #include <iostream>
 #include <vector>
 #include <uWS/uWS.h>
-/**
-  * structure to hold telemtry data
-**/
-struct Telemetry {
-	long long timestamp_;
-	double steering_angle_;
-  double velocity_;
-  double throttle_;
-  double cte;
-};
+#include <ctime>
+#include <chrono>
 
 
 class PID {
 public:
+
+  double p_error;
+  double i_error;
+  double d_error;
 
   /* Coefficients */
   double Kp_;
   double Ki_;
   double Kd_;
 
+  long long last_timestamp;
+  double last_cte;
+  double last_dcte; //used for smoothing
+  double icte;
   bool is_initialized;
-
-  std::vector<Telemetry> telemetry_; //list of all telemetry readings
-
-  double integrated_cte; //running sum integrated cte
 
   PID();
   virtual ~PID();
 
   void Init(double Kp, double Ki, double Kd);
 
-  void Restart(uWS::WebSocket<uWS::SERVER> ws);
+  /*
+  * Update the PID error variables given cross track error.
+  */
+  void UpdateError(double cte);
 
-  Telemetry updateTelemetry(Telemetry reading);
-  double avg_cte();
+  /* restart the simulator */
+  void Restart(uWS::WebSocket<uWS::SERVER> ws);
+  /*
+  * Calculate the total PID error.
+  */
+  double TotalError();
 };
 
 #endif /* PID_H */

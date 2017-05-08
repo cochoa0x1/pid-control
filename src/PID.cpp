@@ -2,10 +2,6 @@
 
 using namespace std;
 
-/*
-* TODO: Complete the PID class.
-*/
-
 PID::PID() {}
 
 PID::~PID() {}
@@ -14,9 +10,13 @@ void PID::Init(double Kp, double Ki, double Kd) {
   Kp_= Kp;
   Ki_=Ki;
   Kd_=Kd;
-  integrated_cte =0.0;
-  telemetry_.clear();
-  is_initialized=true;
+  p_error = 0;
+  i_error = 0;
+  d_error = 0;
+  last_cte =0;
+  last_dcte=0;
+  icte=0;
+  is_initialized = false;
 }
 
 void PID::Restart(uWS::WebSocket<uWS::SERVER> ws){
@@ -24,54 +24,50 @@ void PID::Restart(uWS::WebSocket<uWS::SERVER> ws){
   ws.send(reset_msg.data(), reset_msg.length(), uWS::OpCode::TEXT);
 }
 
-Telemetry PID::updateTelemetry(Telemetry reading){
+void PID::UpdateError(double cte){
 
-  //output packet
-  Telemetry result;
+  // get system time in microseconds
+  auto duration = std::chrono::system_clock::now().time_since_epoch();
+  auto timestamp = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
 
   //handle case where there is no previous reading
-  if (telemetry_.size() ==0){
-    telemetry_.push_back(reading);
-    result = reading;
-    integrated_cte+=reading.cte;
-    result.steering_angle_ = -1.0*Kp_*reading.cte - 1.0*Ki_*integrated_cte;
-    if(result.steering_angle_ >1.0){ result.steering_angle_=1.0;}
-    if(result.steering_angle_ <-1.0){ result.steering_angle_=-1.0;}
-    return result;
+  //disregard cte at time 0 for integrated term, do not want massive spike
+  if (!is_initialized){
+    //just update the p_error term, leave the rest 0
+    p_error = -1.0*Kp_*cte;
+
+    //set last_cte to this cte
+    last_timestamp = timestamp;
+    last_cte = cte;
+    is_initialized = true;
+    return;
   }
-
-  //get the prior reading
-  Telemetry last_reading = telemetry_.back();
-
-  //save the new reading to our list
-  telemetry_.push_back(reading);
 
   //calc the time since last reading
-  double dt = (reading.timestamp_ - last_reading.timestamp_) / 1000000.0;
+  double dt = (timestamp - last_timestamp) / 1000000.0;
+  if(dt < .0000001){ dt = .0000001; } //guard against divide by zero somehow
 
-  //calculate the cte derivative
-  if(dt < .0000001){
-    dt = .0000001; //guard against divide by zero somehow
-  }
+  icte += cte*dt; //update i term
 
-  double dcte = (reading.cte - last_reading.cte)/(dt);
-  integrated_cte+=reading.cte*dt;
+  double q = .7;
 
-  result = reading;
-  result.steering_angle_ = -1.0*Kp_*reading.cte -1.0*Kd_*dcte - 1.0*Ki_*integrated_cte;
+  double dcte = q*(cte - last_cte)/(dt)+(1-q)*last_dcte;
 
-  if(result.steering_angle_ >1.0){ result.steering_angle_=1.0;}
-  if(result.steering_angle_ <-1.0){ result.steering_angle_=-1.0;}
+  p_error = -1.0*Kp_*cte;
+  i_error = -1.0*Ki_*icte;
+  d_error = -1.0*Kd_*dcte;
 
-
-  std::cout << "dt: " << dt << " cte: " << reading.cte << " dcte: " << dcte << " icte: " << integrated_cte << std::endl;
-  return result;
+  //updates for next loop
+  last_timestamp = timestamp;
+  last_cte = cte;
+  last_dcte = dcte;
 }
 
-double PID::avg_cte(){
-  double x=0;
-  for(auto & t : telemetry_){
-    x+=t.cte*t.cte;
-  }
-  return x/(telemetry_.size());
+double PID::TotalError(){
+  double err = p_error+i_error+d_error;
+  // clamp the values to [-1,1]
+  if(err >1.0){ err=1.0;}
+  if(err <-1.0){ err=-1.0;}
+
+  return err;
 }
