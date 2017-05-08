@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 
           /* get system time in milliseconds, thank you stack overflow: */
           auto duration = std::chrono::system_clock::now().time_since_epoch();
-          auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+          auto millis = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
 
           //std::cout << millis << std::endl;
 

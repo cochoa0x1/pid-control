@@ -47,7 +47,7 @@ Telemetry PID::updateTelemetry(Telemetry reading){
   telemetry_.push_back(reading);
 
   //calc the time since last reading
-  double dt = (reading.timestamp_ - last_reading.timestamp_) / 1000.0;
+  double dt = (reading.timestamp_ - last_reading.timestamp_) / 1000000.0;
 
   //calculate the cte derivative
   if(dt < .0000001){
