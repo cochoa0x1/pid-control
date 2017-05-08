@@ -30,18 +30,36 @@ std::string hasData(std::string s) {
   return "";
 }
 
-int main()
+int main(int argc, char *argv[])
 {
   uWS::Hub h;
 
   PID pid;
   // TODO: Initialize the pid variable.
-  pid.Init(.01,0.001,0.001);
+  //pid.Init(.1,0.1,0.001);
+  pid.is_initialized=false;
 
-  h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  double c[3] ={.02,0.001,0};
+
+  if(argc ==4){
+    std::cout << argv[1] << std::endl;
+    c[0] = atof(argv[1]);
+    c[1] = atof(argv[2]);
+    c[2] = atof(argv[3]);
+
+  }
+
+  h.onMessage([&pid,&c](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
+    //pid.Restart(ws);
+    if(!pid.is_initialized){
+      pid.Restart(ws);
+      pid.Init(c[0],c[1],c[2]);
+    }
+
+
     if (length && length > 2 && data[0] == '4' && data[1] == '2')
     {
       auto s = hasData(std::string(data).substr(0, length));
@@ -69,23 +87,30 @@ int main()
           auto duration = std::chrono::system_clock::now().time_since_epoch();
           auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
 
-          std::cout << millis << std::endl;
+          //std::cout << millis << std::endl;
 
           Telemetry reading = { millis, angle, speed, throttle, cte  };
 
           Telemetry new_controls = pid.updateTelemetry(reading);
 
+
+          if( (abs(cte) > 3.0 && pid.telemetry_.size()> 50) || pid.telemetry_.size() > 3000 ){
+            double avg_c = pid.avg_cte();
+            std::cout << "AVGCTE: " << avg_c << " DURATION: " << pid.telemetry_.size() << std::endl;
+            std::exit(0);
+          }
+
           //std::cout << "angle: " << new_controls.steering_angle_;
 
           steer_value = new_controls.steering_angle_;
           // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << " c0: " << c[0] << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.2;
+          msgJson["throttle"] = 1.0*(1.-.9*std::abs(steer_value)); //brake on turn
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
+          //std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
@@ -113,6 +138,7 @@ int main()
 
   h.onConnection([&h](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
     std::cout << "Connected!!!" << std::endl;
+
   });
 
   h.onDisconnection([&h](uWS::WebSocket<uWS::SERVER> ws, int code, char *message, size_t length) {

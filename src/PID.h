@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <uWS/uWS.h>
 /**
   * structure to hold telemtry data
 **/
@@ -18,9 +19,12 @@ struct Telemetry {
 class PID {
 public:
 
+  /* Coefficients */
   double Kp_;
   double Ki_;
   double Kd_;
+
+  bool is_initialized;
 
   std::vector<Telemetry> telemetry_; //list of all telemetry readings
 
@@ -31,7 +35,10 @@ public:
 
   void Init(double Kp, double Ki, double Kd);
 
+  void Restart(uWS::WebSocket<uWS::SERVER> ws);
+
   Telemetry updateTelemetry(Telemetry reading);
+  double avg_cte();
 };
 
 #endif /* PID_H */
