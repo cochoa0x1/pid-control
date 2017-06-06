@@ -48,11 +48,19 @@ int main(int argc, char *argv[])
 
   pid.Init(c[0],c[1],c[2]);
 
-  h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  /* params to decide when to terminate simulator */
+  int t = 0 ; //keep track of the number of frames
+  double terminal_cte = 1e7;
+  int terminal_t = 1e7;
+
+  if(argc ==6){
+    terminal_t = atoi(argv[4]);
+    terminal_cte = atof(argv[5]);
+  }
+  h.onMessage([&pid, &t, &terminal_cte, &terminal_t](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
-
 
     if(!pid.is_initialized){
       pid.Restart(ws);
@@ -60,6 +68,7 @@ int main(int argc, char *argv[])
 
     if (length && length > 2 && data[0] == '4' && data[1] == '2')
     {
+      t++;
       auto s = hasData(std::string(data).substr(0, length));
       if (s != "") {
         auto j = json::parse(s);
@@ -74,21 +83,13 @@ int main(int argc, char *argv[])
           double throttle = std::stod(j[1]["throttle"].get<std::string>());
           double steer_value;
           double new_throttle;
-          /*
-          * TODO: Calcuate steering value here, remember the steering value is
-          * [-1, 1].
-          * NOTE: Feel free to play around with the throttle and speed. Maybe use
-          * another PID controller to control the speed!
-          */
 
           pid.UpdateError(cte);
 
-          /*
-          if( (abs(cte) > 3.0 && pid.telemetry_.size()> 50) || pid.telemetry_.size() > 3000 ){
-            double avg_c = pid.avg_cte();
-            std::cout << "AVGCTE: " << avg_c << " DURATION: " << pid.telemetry_.size() << std::endl;
+
+          if(t >= terminal_t || ( cte > terminal_cte && t > 30) ){
             std::exit(0);
-          }*/
+          }
 
           //std::cout << "angle: " << new_controls.steering_angle_;
           double q = .5;
