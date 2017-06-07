@@ -26,7 +26,7 @@ CTE and steering angle (tuned)
 ![](img/cte_angle.png)
 
 video of the tuned system
-<video controls="controls" width="auto" height="480" name="tuned" src="img/sample_drive.mov"></video>
+<video controls="controls" width="auto" height="480" name="tuned" src="https://github.com/cochoa0x1/pid-control/blob/master/img/sample_drive.mov"></video>
 
 
 ## Dependencies
