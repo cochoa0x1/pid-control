@@ -37,9 +37,9 @@ int main(int argc, char *argv[])
   //pid.Init(.1,0.1,0.001);
 
 
-  double c[3] ={.2,.1,.1};
+  double c[3] ={0.7308569492165553, 0.1338155374232569, 0.3593786299378923};
 
-  if(argc ==4){
+  if(argc >=4){
     std::cout << argv[1] << std::endl;
     c[0] = atof(argv[1]);
     c[1] = atof(argv[2]);
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
           //std::cout << "angle: " << new_controls.steering_angle_;
           double q = .5;
           steer_value = q*pid.TotalError()+(1-q)*angle/25.0;
-          new_throttle = .5*(1.-1.0*std::abs(steer_value));
+          new_throttle = .4*(1.-1.0*std::abs(steer_value));
           // DEBUG
 
           std::cout << "cte: " << cte

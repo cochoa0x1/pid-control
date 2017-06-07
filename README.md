@@ -1,7 +1,33 @@
-# CarND-Controls-PID
-Self-Driving Car Engineer Nanodegree Program
+# PID controller for a car
 
----
+## Running it
+
+Start the simulator and run the program with no arguments to use my parameters or pass the following parameters: p, i, d, max_running_time, max_cte_before_fail
+
+## Tuning Process
+
+The PID controller has three gains that can be adjusted to get good performance. The p or proportional gain controls how much of a response should be applied in direct proportion to the cross track error. The i or integral gain is used to offset long running errors such as those caused by a bias. It is applied to the integral of the cross track error. Finally, the d gain is the amount to adjust by the derivative of the CTE. It is used to dampen oscillations caused by p gain.
+
+The tuning process went as follows: First I zeroed out all the gains and incrementally increased the p gain first so that the car would stay on the track and then eventually until the oscillations became so violent it would leave the track even on a straight segment. I then increased the d gain to dampen these oscillations. Finally I adjusted the I gain. There was lots of back and forth though, it was not this straightforward.
+
+After this rough tuning manual tuning, the python script auto_tune.ipynb was run to automatically adjust the values using the twiddle optimization method.
+
+p = [p gain, i gain, d gain]
+
+before tuning (baseline): p=[.2,.1,.1], x axis is roughly time
+![](img/before_tune.png)
+
+after tuning: p=[0.7308569492165553, 0.1338155374232569, 0.3593786299378923]
+![](img/tuned.png)
+
+The metric for the twiddle method was the RMS CTE for a duration of 3000 control updates (or less if the CTE were to ever go over 3.0, I interpreted this as "off the track"). The algorithm increased the p gain to a much higher value than I had found by hand and relying on strong d gain to keep the car from overshooting. 
+
+CTE and steering angle (tuned)
+![](img/cte_angle.png)
+
+video of the tuned system
+<video controls="controls" width="auto" height="480" name="tuned" src="img/sample_drive.mov"></video>
+
 
 ## Dependencies
 
@@ -26,59 +52,3 @@ Self-Driving Car Engineer Nanodegree Program
 2. Make a build directory: `mkdir build && cd build`
 3. Compile: `cmake .. && make`
 4. Run it: `./pid`. 
-
-## Editor Settings
-
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
-
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
-
-## Code Style
-
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
-
-## Project Instructions and Rubric
-
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
-
-More information is only accessible by people who are already enrolled in Term 2
-of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/e8235395-22dd-4b87-88e0-d108c5e5bbf4/concepts/6a4d8d42-6a04-4aa6-b284-1697c0fd6562)
-for instructions and the project rubric.
-
-## Hints!
-
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
-
-## Call for IDE Profiles Pull Requests
-
-Help your fellow students!
-
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to we ensure
-that students don't feel pressured to use one IDE or another.
-
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
-
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
-
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
-
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
